@@ -1,5 +1,5 @@
 //WiFi
-#define ssid "5"
+#define ssid "55"
 #define password ""
 
 //MQTT
