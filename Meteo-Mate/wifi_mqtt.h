@@ -9,6 +9,7 @@
 //times
 //unsigned long start = millis();
 //unsigned long delayTimeWiFi = 10000;  //10 sec //millis is causing a crash (stack smashing?)
+int i = 0;
 
 //WiFi
 const char *ssid = WiFissid;
@@ -28,10 +29,10 @@ void WiFiConnection() {
     ESP.restart();
   }*/
   while (WiFi.status() != WL_CONNECTED) {
-    for (int i = 0; i <= 1;) {
+    /*if(i < 1) {
       NeoConnect();
-      i++;
-    }
+      i = 1;
+    }*/
     delay(500);
     Serial.println("Connecting to WiFi");
   }
@@ -40,3 +41,20 @@ void WiFiConnection() {
     Serial.println(WiFi.localIP());
   }
 }
+
+void MQTTConnection() {
+  client.setServer(mqtt_broker, mqtt_port);
+  while (!client.connected()) {
+    String client_id = MQTT_username;
+    client_id += String(WiFi.macAddress());
+    Serial.printf("The client %s connects to the public MQTT broker\n", client_id.c_str());
+    if (client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
+      Serial.println("MQTT protocol changed state to up");
+    } else {
+      Serial.println("failed with state ");
+      Serial.print(client.state());
+      delay(2000);
+    }
+  }
+}
+
