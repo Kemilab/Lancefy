@@ -2,8 +2,16 @@
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
-//dht 22 sensor
-DHT dht22(2, DHT22);
+#include <DHT_U.h>
+
+DHT dht22(2, DHT22);  //dht 22 sensor
+
+float humidity = 0.0;  //var. for sensors
+float temperature = 0.0;
+
+#define uS_TO_S_FACTOR 1000000ULL  //Conversion factor for micro seconds to seconds
+#define TIME_TO_SLEEP 300         //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -17,16 +25,44 @@ void setup() {
       MQTTConnection();
     default:;
   };
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);  //enabled deep sleep
+mesurements:
+  if (WiFi.status() == WL_CONNECTED && client.connected() == true) {
+    dht22.begin();
+    delay(10000);
+    GetDHT22();
+    delay(1000);
+    PublishData();
+  } else {
+    NeoError();
+    Serial.println("MQTT server or WiFi error! Retrying...");
+    if (WiFi.status() != WL_CONNECTED) {
+      WiFiConnection();
+      goto mesurements;
+    } else {
+      MQTTConnection();
+      goto mesurements;
+    }
+  }
+  Serial.println("Going to sleep");
+  Serial.flush();
+  esp_deep_sleep_start();          //byeeeee
 }
 
-void GetData() {
+void GetDHT22() {
   if (client.connected() == true) {
-    delay(1000);
-    float temperature = dht22.readTemperature();
-    float humidity = dht22.readHumidity();
+    temperature = dht22.readTemperature();
+    humidity = dht22.readHumidity();
   }
 }
 
+void PublishData() {
+  String lineProtocol_1 = "temperature=" + String(temperature) + ",";
+  lineProtocol_1 += "humidity=" + String(humidity);
+  client.publish("esp/temp&humid", lineProtocol_1.c_str());
+  delay(1000);
+  Serial.println(lineProtocol_1);
+}
 void loop() {
   // put your main code here, to run repeatedly:
 }
