@@ -10,7 +10,7 @@ float humidity = 0.0;  //var. for sensors
 float temperature = 0.0;
 
 #define uS_TO_S_FACTOR 1000000ULL  //Conversion factor for micro seconds to seconds
-#define TIME_TO_SLEEP 300         //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
+#define TIME_TO_SLEEP 300          //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
 
 void setup() {
   // put your setup code here, to run once:
@@ -32,6 +32,9 @@ mesurements:
     delay(10000);
     GetDHT22();
     delay(1000);
+    if(isnan(temperature) && isnan(humidity)){
+      goto mesurements;
+    }
     PublishData();
   } else {
     NeoError();
@@ -46,7 +49,7 @@ mesurements:
   }
   Serial.println("Going to sleep");
   Serial.flush();
-  esp_deep_sleep_start();          //byeeeee
+  esp_deep_sleep_start();  //byeeeee
 }
 
 void GetDHT22() {
@@ -60,9 +63,10 @@ void PublishData() {
   String lineProtocol_1 = "temperature=" + String(temperature) + ",";
   lineProtocol_1 += "humidity=" + String(humidity);
   client.publish("esp/temp&humid", lineProtocol_1.c_str());
-  delay(1000);
+  delay(5000);  // 5s delay to make sure that mqtt published data
   Serial.println(lineProtocol_1);
 }
 void loop() {
   // put your main code here, to run repeatedly:
+  return;
 }

@@ -4,11 +4,10 @@
 #include "sys/_types.h"
 #include "WiFiType.h"
 #include <WiFi.h>
-#include <PubSubClient.h>
 #include "NeoPixel.h"
+#include <PubSubClient.h>
+
 //times
-//unsigned long start = millis();
-//unsigned long delayTimeWiFi = 10000;  //10 sec //millis is causing a crash (stack smashing?)
 bool hasRun = false;
 
 //WiFi
@@ -25,9 +24,13 @@ PubSubClient client(espClient);
 
 void WiFiConnection() {
   WiFi.begin(ssid, password);
-  /* if (millis() - start < delayTimeWiFi) {
+  delay(10000);
+  if(WiFi.status() != WL_CONNECTED){
+    NeoError();
+    delay(100);
+    PixelsOff();
     ESP.restart();
-  }*/
+  }
   while (WiFi.status() != WL_CONNECTED) {
     switch (hasRun == false) {
       case 1:
