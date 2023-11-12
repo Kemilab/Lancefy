@@ -7,12 +7,12 @@ DHT dht22(2, DHT22);
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.print("Trying to run WiFi setup");
+  Serial.println("Trying to run WiFi setup");
   delay(100);
   WiFiConnection();
   switch (WiFi.status() == WL_CONNECTED) {
     case 1:
-      Serial.print("Trying to run MQTT setup");
+      Serial.println("Trying to run MQTT setup");
       delay(100);
       MQTTConnection();
     default:;

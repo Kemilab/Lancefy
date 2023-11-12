@@ -9,7 +9,7 @@
 //times
 //unsigned long start = millis();
 //unsigned long delayTimeWiFi = 10000;  //10 sec //millis is causing a crash (stack smashing?)
-int i = 0;
+bool hasRun = false;
 
 //WiFi
 const char *ssid = WiFissid;
@@ -29,10 +29,13 @@ void WiFiConnection() {
     ESP.restart();
   }*/
   while (WiFi.status() != WL_CONNECTED) {
-    /*if(i < 1) {
-      NeoConnect();
-      i = 1;
-    }*/
+    switch (hasRun == false) {
+      case 1:
+        NeoConnect();
+        hasRun = true;
+        Serial.println("NeoConncet Blocked");
+      default:;
+    }
     delay(500);
     Serial.println("Connecting to WiFi");
   }
@@ -57,4 +60,3 @@ void MQTTConnection() {
     }
   }
 }
-
