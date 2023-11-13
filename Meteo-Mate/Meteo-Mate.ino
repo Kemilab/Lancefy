@@ -10,10 +10,9 @@ float humidity = 0.0;  //var. for sensors
 float temperature = 0.0;
 
 #define uS_TO_S_FACTOR 1000000ULL  //Conversion factor for micro seconds to seconds
-#define TIME_TO_SLEEP 300          //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
+#define TIME_TO_SLEEP 60          //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   Serial.println("Trying to run WiFi setup");
   delay(100);
@@ -49,6 +48,7 @@ mesurements:
   }
   Serial.println("Going to sleep");
   Serial.flush();
+  PixelsOff();
   esp_deep_sleep_start();  //byeeeee
 }
 

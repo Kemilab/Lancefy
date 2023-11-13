@@ -58,7 +58,7 @@ void MQTTConnection() {
       Serial.println("MQTT protocol changed state to up");
     } else {
       Serial.println("failed with state ");
-      Serial.print(client.state());
+      Serial.println(client.state());
       delay(2000);
     }
   }
