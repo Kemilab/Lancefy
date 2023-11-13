@@ -10,7 +10,7 @@ float humidity = 0.0;  //var. for sensors
 float temperature = 0.0;
 
 #define uS_TO_S_FACTOR 1000000ULL  //Conversion factor for micro seconds to seconds
-#define TIME_TO_SLEEP 60          //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
+#define TIME_TO_SLEEP 60         //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
 
 void setup() {
   Serial.begin(115200);
@@ -31,14 +31,17 @@ mesurements:
     delay(10000);
     GetDHT22();
     delay(1000);
-    if(isnan(temperature) && isnan(humidity)){
+    if(isnan(temperature) || isnan(humidity)){
+      Serial.println("Error in sensors, going back to the start!");
+      NeoError();
       goto mesurements;
     }
     PublishData();
   } else {
     NeoError();
     Serial.println("MQTT server or WiFi error! Retrying...");
-    if (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() != WL_CONNECTED || client.connected() 
+    ) {
       WiFiConnection();
       goto mesurements;
     } else {

@@ -23,24 +23,15 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 void WiFiConnection() {
+  Serial.println("Connecting to WiFi");
   WiFi.begin(ssid, password);
+  NeoConnect();
   delay(10000);
-  if(WiFi.status() != WL_CONNECTED){
+  if (WiFi.status() != WL_CONNECTED) {
     NeoError();
     delay(100);
     PixelsOff();
     ESP.restart();
-  }
-  while (WiFi.status() != WL_CONNECTED) {
-    switch (hasRun == false) {
-      case 1:
-        NeoConnect();
-        hasRun = true;
-        Serial.println("NeoConncet Blocked");
-      default:;
-    }
-    delay(500);
-    Serial.println("Connecting to WiFi");
   }
   Serial.println("WiFi connected!");
   if (WiFi.status() == WL_CONNECTED) {

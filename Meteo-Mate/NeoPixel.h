@@ -57,6 +57,8 @@ void NeoError() {
   pixels.setPixelColor(0, pixels.Color(red, green, blue));
   pixels.setBrightness(155);
   pixels.show();
+  //time
+  unsigned int startTime = millis();
   while (millis() - startTime < 5000) {
     PixelsOff();
   }
