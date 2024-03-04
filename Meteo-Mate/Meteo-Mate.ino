@@ -1,75 +1,51 @@
-#include "wifi_mqtt.h"
-#include <Adafruit_NeoPixel.h>
-#include <ArduinoJson.h>
-#include <DHT.h>
-#include <DHT_U.h>
+/*400 Bad Request - Invalid URL, request parameters or body.
+401 Unauthorized - Invalid $ACCESS_TOKEN.
+404 Not Found - Resource not found.
+*/
 
-DHT dht22(2, DHT22);  //dht 22 sensor
+#include <WiFi.h>
+#include "secrets.h"
+#include "sendData.h"
+#include <Adafruit_BME680.h>
 
-float humidity = 0.0;  //var. for sensors
-float temperature = 0.0;
+const char *ssid = WiFissid;
+const char *password = WiFipassword;
 
-#define uS_TO_S_FACTOR 1000000ULL  //Conversion factor for micro seconds to seconds
-#define TIME_TO_SLEEP 60         //Time ESP32 will go to sleep (in seconds) - 9.5 minutes
+Adafruit_BME680 bme;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Trying to run WiFi setup");
-  delay(100);
-  WiFiConnection();
-  switch (WiFi.status() == WL_CONNECTED) {
-    case 1:
-      Serial.println("Trying to run MQTT setup");
-      delay(100);
-      MQTTConnection();
-    default:;
-  };
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);  //enabled deep sleep
-mesurements:
-  if (WiFi.status() == WL_CONNECTED && client.connected() == true) {
-    dht22.begin();
-    delay(10000);
-    GetDHT22();
-    delay(1000);
-    if(isnan(temperature) || isnan(humidity)){
-      Serial.println("Error in sensors, going back to the start!");
-      NeoError();
-      goto mesurements;
-    }
-    PublishData();
-  } else {
-    NeoError();
-    Serial.println("MQTT server or WiFi error! Retrying...");
-    if (WiFi.status() != WL_CONNECTED || client.connected() 
-    ) {
-      WiFiConnection();
-      goto mesurements;
-    } else {
-      MQTTConnection();
-      goto mesurements;
-    }
-  }
-  Serial.println("Going to sleep");
-  Serial.flush();
-  PixelsOff();
-  esp_deep_sleep_start();  //byeeeee
-}
 
-void GetDHT22() {
-  if (client.connected() == true) {
-    temperature = dht22.readTemperature();
-    humidity = dht22.readHumidity();
+  WiFi.begin(ssid, password);
+  Serial.println("WiFi setup started");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.println("Connecting to WiFi!");
   }
-}
+  Serial.println("Connected to the network with IP address: ");
+  Serial.print(WiFi.localIP());
 
-void PublishData() {
-  String lineProtocol_1 = "temperature=" + String(temperature) + ",";
-  lineProtocol_1 += "humidity=" + String(humidity);
-  client.publish("esp/temp&humid", lineProtocol_1.c_str());
-  delay(5000);  // 5s delay to make sure that mqtt published data
-  Serial.println(lineProtocol_1);
+  if (!bme.begin()) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+    while (1);
+  }
+
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150);
 }
 void loop() {
-  // put your main code here, to run repeatedly:
-  return;
+
+  // Read sensor data
+  float temperature = bme.temperature;
+  float humidity = bme.humidity;
+  float pressure = bme.pressure / 100.0;              // Convert to hPa
+  float gasResistance = bme.gas_resistance / 1000.0;  // Convert to kOhms
+
+  String jsonPayload = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"pressure\":" + String(pressure) + ",\"gasResistance\":" + String(gasResistance) + "}";
+  // Send data to dash.esclone.com
+  sendData(jsonPayload);
+  delay(5000);
 }
