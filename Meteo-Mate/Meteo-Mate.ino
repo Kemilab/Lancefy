@@ -1,6 +1,7 @@
 /*400 Bad Request - Invalid URL, request parameters or body.
 401 Unauthorized - Invalid $ACCESS_TOKEN.
 404 Not Found - Resource not found.
+pin 26 - uv sensor adc
 */
 
 #include <WiFi.h>
@@ -23,18 +24,9 @@ void setup() {
 }
 
 void loop() {
-  read_bme();
+//  read_bme();
   read_UV();
 }
-
-
-
-
-
-
-
-
-
 
 void read_bme() {
   bme.begin();
@@ -72,35 +64,41 @@ void read_bme() {
   delay(2000);
 }
 
-void read_UV() { // impement that uv valu is being stored in uvIndex variable for easier sending
-  int uv_Value = analogRead(26) * 5000 / 1023.0;
-  if (uv_Value < 50) {
+void read_UV() {  // impement that uv value is being stored in uvIndex variable for easier sending
+  double uv_Value = analogRead(25) * 5000 / 1023.0;
+  if (uv_Value > 0 && uv_Value < 227) {
     Serial.println("UV index is 0");
   } else if (uv_Value > 50 && uv_Value < 318) {
     Serial.println("UV index is 1");
-  } else if (uv_Value > 318 && uv_Value < 408) {
+  } else if (uv_Value > 227 && uv_Value < 408) {
     Serial.println("UV index is 2");
-  } else if (uv_Value > 408 && uv_Value < 503) {
+  } else if (uv_Value > 318 && uv_Value < 503) {
     Serial.println("UV index is 3");
-  } else if (uv_Value > 503 && uv_Value < 606) {
+  } else if (uv_Value > 408 && uv_Value < 606) {
     Serial.println("UV index is 4");
-  } else if (uv_Value > 606 && uv_Value < 696) {
+  } else if (uv_Value > 503 && uv_Value < 696) {
     Serial.println("UV index is 5");
-  } else if (uv_Value > 696 && uv_Value < 795) {
+  } else if (uv_Value > 606 && uv_Value < 795) {
     Serial.println("UV index is 6");
-  } else if (uv_Value > 795 && uv_Value < 881) {
+  } else if (uv_Value > 696 && uv_Value < 881) {
+    Serial.println("UV index is 7");
+  } else if (uv_Value > 795 && uv_Value < 976) {
     Serial.println("UV index is 8");
-  } else if (uv_Value > 881 && uv_Value < 976) {
+  } else if (uv_Value > 881 && uv_Value < 1079) {
     Serial.println("UV index is 9");
-  } else if (uv_Value > 976 && uv_Value < 1079) {
+  } else if (uv_Value > 976 && uv_Value < 1170) {
     Serial.println("UV index is 10");
-  } else if (uv_Value > 1079 && uv_Value < 1170) {
-    Serial.println("UV index is 11");
+  } else if (uv_Value >= 1170) {
+    Serial.println("UV index is 11+");
   } else {
     Serial.println("Data is out of range or sensor is broken!");
   }
   delay(1000);
+  Serial.println("Raw data values for uv is " + (String)uv_Value);
 }
+
+
+
 
 void wind_speed() {
   //todo
