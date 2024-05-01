@@ -3,61 +3,117 @@
 404 Not Found - Resource not found.
 pin 26 - uv sensor adc
 */
-#include "Adafruit_BME680.h"
+
+/************************************************************************
+  LIBRARIES
+************************************************************************/
+#include <BME280.h>
+#include <BME280I2C.h>
+#include <BME280I2C_BRZO.h>
+#include <EnvironmentCalculations.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include "send_data.h"
+/************************************************************************
+  MACROS
+************************************************************************/
+#define ENABLE_DEBUG true  // serial debuging
+//#define BME_POWER_PWR_PIN 12         // digital pin 12
+//#define UV_SENSOR_PWR_PIN 13         // digital pin 13
+#define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
+#define uS_TO_S_FACTOR 1000000ULL
+#define TIME_TO_SLEEP 5
+/**********************************************************************
+  VARS
+***********************************************************************/
 
-Adafruit_BME680 bme;
-#define SEALEVELPRESSURE_HPA (1011)
+BME280I2C::Settings settings(
+  BME280::OSR_X1,
+  BME280::OSR_X1,
+  BME280::OSR_X1,
+  BME280::Mode_Forced,
+  BME280::StandbyTime_1000ms,
+  BME280::Filter_16,
+  BME280::SpiEnable_False,
+  BME280I2C::I2CAddr_0x76);
+
+BME280I2C bme(settings);
 
 int uvIndex = 0;
-double uv_Value = 0.0;
+float uv_Value = 0.0;
+float aCoefficient = 17.625;  //Magnus coefficient a for calculating the dew poin
+float bCoefficient = 243.04;  //Magnus coefficient b for calculating the dew poin
 
 void setup() {
-  Serial.begin(115200);
-}
-
-void loop() {
+  if (ENABLE_DEBUG) {
+    Serial.begin(115200);
+  }
+  Wire.begin();
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   start_wifi();
   read_bme();
-  read_UV();
+  delay(1000);
+  sendData();
+  // read_UV();
+    Serial.println("Going to sleep now");
+    Serial.flush();
+    esp_deep_sleep_start();
 }
+void loop() {}
 
-void read_bme() {
-  bme.begin();
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150);  // 320*C for 150 ms
-
-  if (!bme.performReading()) {
-    Serial.println("Failed to perform reading :(");
-    return;
+float read_bme() {
+  while (!bme.begin()) {
+    Serial.println("Could not find BME280 sensor!");
+    delay(1000);
   }
-  Serial.print("Temperature = ");
-  Serial.print(bme.temperature);
-  Serial.println(" *C");
 
-  Serial.print("Pressure = ");
-  Serial.print(bme.pressure / 100.0);
-  Serial.println(" hPa");
+  SensorData data;
 
-  Serial.print("Humidity = ");
-  Serial.print(bme.humidity);
-  Serial.println(" %");
+  float temp(NAN), hum(NAN), pres(NAN);
 
-  Serial.print("Gas = ");
-  Serial.print(bme.gas_resistance / 1000.0);
-  Serial.println(" KOhms");
+  BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+  BME280::PresUnit presUnit(BME280::PresUnit_hPa);
 
-  Serial.print("Approx. Altitude = ");
-  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-  Serial.println(" m");
+  bme.read(pres, temp, hum, tempUnit, presUnit);
 
-  Serial.println();
-  delay(2000);
+  Serial.print(F("Temp: "));
+  Serial.print(temp);
+  Serial.print(("°" + String(tempUnit == BME280::TempUnit_Celsius ? "C" : "F")));
+  Serial.println("\t\tHumidity: ");
+  Serial.print(hum);
+  Serial.print("% RH");
+  Serial.print("\t\tPressure: ");
+  Serial.print(pres);
+  Serial.print(String(presUnit == BME280::PresUnit_hPa ? "hPa" : "Pa"));
+
+  EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
+  EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
+
+  float absHum = EnvironmentCalculations::AbsoluteHumidity(temp, hum, envTempUnit);
+  float dewPoint = EnvironmentCalculations::DewPoint(temp, hum, envTempUnit);
+  //float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, temp, pres, envAltUnit, envTempUnit);
+
+  /*Serial.println("\t\tAltitude: ");
+  Serial.println(altitude);*/
+  //Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
+  Serial.println("\t\tDew point: ");
+  Serial.print(dewPoint);
+  Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+  /*Serial.println("\t\tEquivalent Sea Level Pressure: ");
+  Serial.println(seaLevel);*/
+  Serial.print("\t\tHeat Index: ");
+  float heatIndex = EnvironmentCalculations::HeatIndex(temp, hum, envTempUnit);
+  Serial.println(heatIndex);
+  Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+  Serial.println("\t\tAbsolute Humidity: ");
+  Serial.print(absHum);
+
+  data.temperature = temp;
+  data.pressure = pres;
+  data.humidity = hum;
+  data.dewPoint = dewPoint;
+  data.heatIndex = heatIndex;
+  data.absHum = absHum;
 }
 
 void read_UV() {  // impement that uv value is being stored in uvIndex variable for easier sending
@@ -105,7 +161,8 @@ void read_UV() {  // impement that uv value is being stored in uvIndex variable 
   Serial.println("Raw data values for uv is " + (String)uv_Value);
 }
 
-
+float calculateDewPoin() {
+}
 
 
 void wind_speed() {

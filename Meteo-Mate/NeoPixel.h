@@ -5,7 +5,6 @@
 Adafruit_NeoPixel pixels(256, 32, NEO_GRB + NEO_KHZ800);
 
 //time
-unsigned int startTime = millis();
 
 void PixelsOff() {
   pixels.begin();
