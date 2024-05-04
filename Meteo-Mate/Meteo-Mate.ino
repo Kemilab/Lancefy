@@ -14,6 +14,7 @@ pin 26 - uv sensor adc
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include "send_data.h"
+#include <LTR390.h>
 /************************************************************************
   MACROS
 ************************************************************************/
@@ -23,6 +24,7 @@ pin 26 - uv sensor adc
 #define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
 #define uS_TO_S_FACTOR 1000000ULL
 #define TIME_TO_SLEEP 5
+#define I2C_ADDRESS 0x53
 /**********************************************************************
   VARS
 ***********************************************************************/
@@ -39,10 +41,7 @@ BME280I2C::Settings settings(
 
 BME280I2C bme(settings);
 
-int uvIndex = 0;
-float uv_Value = 0.0;
-float aCoefficient = 17.625;  //Magnus coefficient a for calculating the dew poin
-float bCoefficient = 243.04;  //Magnus coefficient b for calculating the dew poin
+LTR390 ltr390(I2C_ADDRESS);
 
 void setup() {
   if (ENABLE_DEBUG) {
@@ -55,19 +54,17 @@ void setup() {
   delay(1000);
   sendData();
   // read_UV();
-    Serial.println("Going to sleep now");
-    Serial.flush();
-    esp_deep_sleep_start();
+  Serial.println("Going to sleep now");
+  Serial.flush();
+  esp_deep_sleep_start();
 }
 void loop() {}
 
 float read_bme() {
-  while (!bme.begin()) {
-    Serial.println("Could not find BME280 sensor!");
+  while (!bme.begin() || !ltr390.init()) {
+    Serial.println("Sensors error!");
     delay(1000);
   }
-
-  SensorData data;
 
   float temp(NAN), hum(NAN), pres(NAN);
 
@@ -75,6 +72,22 @@ float read_bme() {
   BME280::PresUnit presUnit(BME280::PresUnit_hPa);
 
   bme.read(pres, temp, hum, tempUnit, presUnit);
+
+
+  EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
+  EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
+
+  float absHum = EnvironmentCalculations::AbsoluteHumidity(temp, hum, envTempUnit);
+  float dewPoint = EnvironmentCalculations::DewPoint(temp, hum, envTempUnit);
+  //float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, temp, pres, envAltUnit, envTempUnit);
+  float heatIndex = EnvironmentCalculations::HeatIndex(temp, hum, envTempUnit);
+
+  data.temperature = temp;
+  data.pressure = pres;
+  data.humidity = hum;
+  data.dewPoint = dewPoint;
+  data.heatIndex = heatIndex;
+  data.absHum = absHum;
 
   Serial.print(F("Temp: "));
   Serial.print(temp);
@@ -85,14 +98,6 @@ float read_bme() {
   Serial.print("\t\tPressure: ");
   Serial.print(pres);
   Serial.print(String(presUnit == BME280::PresUnit_hPa ? "hPa" : "Pa"));
-
-  EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
-  EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
-
-  float absHum = EnvironmentCalculations::AbsoluteHumidity(temp, hum, envTempUnit);
-  float dewPoint = EnvironmentCalculations::DewPoint(temp, hum, envTempUnit);
-  //float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, temp, pres, envAltUnit, envTempUnit);
-
   /*Serial.println("\t\tAltitude: ");
   Serial.println(altitude);*/
   //Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
@@ -102,63 +107,43 @@ float read_bme() {
   /*Serial.println("\t\tEquivalent Sea Level Pressure: ");
   Serial.println(seaLevel);*/
   Serial.print("\t\tHeat Index: ");
-  float heatIndex = EnvironmentCalculations::HeatIndex(temp, hum, envTempUnit);
   Serial.println(heatIndex);
   Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
   Serial.println("\t\tAbsolute Humidity: ");
   Serial.print(absHum);
-
-  data.temperature = temp;
-  data.pressure = pres;
-  data.humidity = hum;
-  data.dewPoint = dewPoint;
-  data.heatIndex = heatIndex;
-  data.absHum = absHum;
 }
 
-void read_UV() {  // impement that uv value is being stored in uvIndex variable for easier sending
-  uv_Value = analogRead(26) * 5000 / 1023.0;
-  if (uv_Value > 0 && uv_Value < 227) {
-    Serial.println("UV index is 0");
-    uvIndex = 0;
-  } else if (uv_Value > 50 && uv_Value < 318) {
-    Serial.println("UV index is 1");
-    uvIndex = 1;
-  } else if (uv_Value > 227 && uv_Value < 408) {
-    Serial.println("UV index is 2");
-    uvIndex = 2;
-  } else if (uv_Value > 318 && uv_Value < 503) {
-    Serial.println("UV index is 3");
-    uvIndex = 3;
-  } else if (uv_Value > 408 && uv_Value < 606) {
-    Serial.println("UV index is 4");
-    uvIndex = 4;
-  } else if (uv_Value > 503 && uv_Value < 696) {
-    Serial.println("UV index is 5");
-    uvIndex = 5;
-  } else if (uv_Value > 606 && uv_Value < 795) {
-    Serial.println("UV index is 6");
-    uvIndex = 6;
-  } else if (uv_Value > 696 && uv_Value < 881) {
-    Serial.println("UV index is 7");
-    uvIndex = 7;
-  } else if (uv_Value > 795 && uv_Value < 976) {
-    Serial.println("UV index is 8");
-    uvIndex = 8;
-  } else if (uv_Value > 881 && uv_Value < 1079) {
-    Serial.println("UV index is 9");
-    uvIndex = 9;
-  } else if (uv_Value > 976 && uv_Value < 1170) {
-    Serial.println("UV index is 10");
-    uvIndex = 10;
-  } else if (uv_Value >= 1170) {
-    Serial.println("UV index is 11+");
-    uvIndex = 11;
-  } else {
-    Serial.println("Data is out of range or sensor is broken!");
+void read_UV() {  // impement that uv value is being stored in data.uvIndex for easier sending
+
+  ltr390.setMode(LTR390_MODE_ALS);
+
+  ltr390.setGain(LTR390_GAIN_3);
+  Serial.print("Gain : ");
+  switch (ltr390.getGain()) {
+    case LTR390_GAIN_1: Serial.println(1); break;
+    case LTR390_GAIN_3: Serial.println(3); break;
+    case LTR390_GAIN_6: Serial.println(6); break;
+    case LTR390_GAIN_9: Serial.println(9); break;
+    case LTR390_GAIN_18: Serial.println(18); break;
   }
-  delay(1000);
-  Serial.println("Raw data values for uv is " + (String)uv_Value);
+
+  ltr390.setResolution(LTR390_RESOLUTION_18BIT);
+  Serial.print("Resolution : ");
+  switch (ltr390.getResolution()) {
+    case LTR390_RESOLUTION_13BIT: Serial.println(13); break;
+    case LTR390_RESOLUTION_16BIT: Serial.println(16); break;
+    case LTR390_RESOLUTION_17BIT: Serial.println(17); break;
+    case LTR390_RESOLUTION_18BIT: Serial.println(18); break;
+    case LTR390_RESOLUTION_19BIT: Serial.println(19); break;
+    case LTR390_RESOLUTION_20BIT: Serial.println(20); break;
+  }
+
+   Serial.print("Ambient Light Lux: "); 
+         Serial.println(ltr390.getLux());
+         ltr390.setGain(LTR390_GAIN_18);                  //Recommended for UVI - x18
+         ltr390.setResolution(LTR390_RESOLUTION_20BIT);   //Recommended for UVI - 20-bit
+         ltr390.setMode(LTR390_MODE_UVS);
+         data.uvIndex = ltr390.getLux();        
 }
 
 float calculateDewPoin() {

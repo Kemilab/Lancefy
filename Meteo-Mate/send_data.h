@@ -68,6 +68,7 @@ void sendData() {
     sensorData_0["dewPoint"] = data.dewPoint;
     sensorData_0["heatIndex"] = data.heatIndex;
     sensorData_0["absHum"] = data.absHum;
+    sensorData_0["uvIndex"] = data.uvIndex;
     String output;
     serializeJson(sensorData, output);
     Serial.println("Making a POST request");
