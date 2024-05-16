@@ -23,8 +23,9 @@ pin 26 - uv sensor adc
 //#define UV_SENSOR_PWR_PIN 13         // digital pin 13
 #define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
 #define uS_TO_S_FACTOR 1000000ULL
-#define TIME_TO_SLEEP 5
-#define I2C_ADDRESS 0x53
+#define TIME_TO_SLEEP 1
+#define I2C_ADDRESS_LTR390 0x53
+int testUv = 1;
 /**********************************************************************
   VARS
 ***********************************************************************/
@@ -41,7 +42,7 @@ BME280I2C::Settings settings(
 
 BME280I2C bme(settings);
 
-LTR390 ltr390(I2C_ADDRESS);
+LTR390 ltr390(I2C_ADDRESS_LTR390);
 
 void setup() {
   if (ENABLE_DEBUG) {
@@ -52,20 +53,19 @@ void setup() {
   start_wifi();
   read_bme();
   delay(1000);
+  read_UV();
   sendData();
-  // read_UV();
   Serial.println("Going to sleep now");
   Serial.flush();
   esp_deep_sleep_start();
 }
 void loop() {}
 
-float read_bme() {
+int read_bme() {
   while (!bme.begin() || !ltr390.init()) {
     Serial.println("Sensors error!");
     delay(1000);
   }
-
   float temp(NAN), hum(NAN), pres(NAN);
 
   BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
@@ -113,10 +113,9 @@ float read_bme() {
   Serial.print(absHum);
 }
 
-void read_UV() {  // impement that uv value is being stored in data.uvIndex for easier sending
+void read_UV() {
 
   ltr390.setMode(LTR390_MODE_ALS);
-
   ltr390.setGain(LTR390_GAIN_3);
   Serial.print("Gain : ");
   switch (ltr390.getGain()) {
@@ -138,12 +137,13 @@ void read_UV() {  // impement that uv value is being stored in data.uvIndex for 
     case LTR390_RESOLUTION_20BIT: Serial.println(20); break;
   }
 
-   Serial.print("Ambient Light Lux: "); 
-         Serial.println(ltr390.getLux());
-         ltr390.setGain(LTR390_GAIN_18);                  //Recommended for UVI - x18
-         ltr390.setResolution(LTR390_RESOLUTION_20BIT);   //Recommended for UVI - 20-bit
-         ltr390.setMode(LTR390_MODE_UVS);
-         data.uvIndex = ltr390.getLux();        
+  Serial.print("Ambient Light Lux: ");
+  Serial.println(ltr390.getLux());
+  ltr390.setGain(LTR390_GAIN_18);                 //Recommended for UVI - x18
+  ltr390.setResolution(LTR390_RESOLUTION_20BIT);  //Recommended for UVI - 20-bit
+  ltr390.setMode(LTR390_MODE_UVS);
+  data.uvIndex = ltr390.getUVI();
+  data.luxLevel = ltr390.getLux();
 }
 
 float calculateDewPoin() {

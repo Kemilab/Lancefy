@@ -29,13 +29,14 @@ const char* server = ADDRESS;
 ***********************************************************************/
 
 struct SensorData {
-  float temperature;
-  float humidity;
-  float pressure;
-  float dewPoint;
-  float heatIndex;
-  float absHum;
+  int temperature;
+  int humidity;
+  int pressure;
+  int dewPoint;
+  int heatIndex;
+  int absHum;
   int uvIndex;
+  int +;
   unsigned long localTime;
 };
 
@@ -69,6 +70,7 @@ void sendData() {
     sensorData_0["heatIndex"] = data.heatIndex;
     sensorData_0["absHum"] = data.absHum;
     sensorData_0["uvIndex"] = data.uvIndex;
+    sensorData_0["luxLevel"] = data.luxLevel;
     String output;
     serializeJson(sensorData, output);
     Serial.println("Making a POST request");
