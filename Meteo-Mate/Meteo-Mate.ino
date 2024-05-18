@@ -3,7 +3,6 @@
 404 Not Found - Resource not found.
 pin 26 - uv sensor adc
 */
-
 /************************************************************************
   LIBRARIES
 ************************************************************************/
@@ -23,13 +22,11 @@ pin 26 - uv sensor adc
 //#define UV_SENSOR_PWR_PIN 13         // digital pin 13
 #define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
 #define uS_TO_S_FACTOR 1000000ULL
-#define TIME_TO_SLEEP 1
+#define TIME_TO_SLEEP 900
 #define I2C_ADDRESS_LTR390 0x53
-int testUv = 1;
 /**********************************************************************
   VARS
 ***********************************************************************/
-
 BME280I2C::Settings settings(
   BME280::OSR_X1,
   BME280::OSR_X1,

@@ -36,7 +36,7 @@ struct SensorData {
   int heatIndex;
   int absHum;
   int uvIndex;
-  int +;
+  int luxLevel;
   unsigned long localTime;
 };
 
@@ -46,6 +46,7 @@ WiFiClient wifi;
 HttpClient client = HttpClient(wifi, server, port);
 SimpleTimer reboteWiFi(20000);
 int statusCode = 0;
+String firmwareVersion = "1.0.0";
 
 void start_wifi() {
   while (WiFi.status() != WL_CONNECTED) {
@@ -71,6 +72,7 @@ void sendData() {
     sensorData_0["absHum"] = data.absHum;
     sensorData_0["uvIndex"] = data.uvIndex;
     sensorData_0["luxLevel"] = data.luxLevel;
+    sensorData_0["firmware_version"] = firmwareVersion;
     String output;
     serializeJson(sensorData, output);
     Serial.println("Making a POST request");
