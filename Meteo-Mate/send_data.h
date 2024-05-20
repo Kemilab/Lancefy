@@ -1,9 +1,9 @@
-#include "stdlib.h"
-#include "HardwareSerial.h"
 /************************************************************************
   LIBRARIES
 ************************************************************************/
 
+#include "stdlib.h"
+#include "HardwareSerial.h"
 #include "esp32-hal.h"
 #include "WString.h"
 #include "WiFiType.h"
@@ -23,6 +23,9 @@ const char* password = WiFipassword;
 int port = PORT;
 const char* key = ACCESS_TOKEN;
 const char* server = ADDRESS;
+const String firmwareVersion = FW_VERSION;
+const String stationName = STATION_NAME;
+const String stationLocation = STATION_LOCATION;
 
 /**********************************************************************
   VARS
@@ -46,12 +49,11 @@ WiFiClient wifi;
 HttpClient client = HttpClient(wifi, server, port);
 SimpleTimer reboteWiFi(20000);
 int statusCode = 0;
-String firmwareVersion = "1.0.0";
 
 void start_wifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
     delay(1000);
     if (reboteWiFi.isReady()) {
       Serial.println(F("WiFi failed! Restart!"));
@@ -73,6 +75,9 @@ void sendData() {
     sensorData_0["uvIndex"] = data.uvIndex;
     sensorData_0["luxLevel"] = data.luxLevel;
     sensorData_0["firmware_version"] = firmwareVersion;
+    sensorData_0["stationName"] = stationName;
+    sensorData_0["stationLocation"] = stationLocation;
+    
     String output;
     serializeJson(sensorData, output);
     Serial.println("Making a POST request");

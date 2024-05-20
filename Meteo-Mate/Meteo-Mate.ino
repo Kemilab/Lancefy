@@ -14,6 +14,7 @@ pin 26 - uv sensor adc
 #include <Wire.h>
 #include "send_data.h"
 #include <LTR390.h>
+#include "ota_check.h"
 /************************************************************************
   MACROS
 ************************************************************************/
@@ -52,6 +53,7 @@ void setup() {
   delay(1000);
   read_UV();
   sendData();
+  checkFwVersion();
   Serial.println("Going to sleep now");
   Serial.flush();
   esp_deep_sleep_start();
