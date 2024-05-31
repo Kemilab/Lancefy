@@ -23,7 +23,7 @@ pin 26 - uv sensor adc
 //#define UV_SENSOR_PWR_PIN 13         // digital pin 13
 #define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
 #define uS_TO_S_FACTOR 1000000ULL
-#define TIME_TO_SLEEP 900
+#define TIME_TO_SLEEP 5 //900 sec
 #define I2C_ADDRESS_LTR390 0x53
 /**********************************************************************
   VARS
