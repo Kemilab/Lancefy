@@ -49,6 +49,7 @@ WiFiClient wifi;
 HttpClient client = HttpClient(wifi, server, port);
 SimpleTimer reboteWiFi(20000);
 int statusCode = 0;
+int tries = 0;
 
 void start_wifi() {
   WiFi.mode(WIFI_STA);
@@ -64,7 +65,7 @@ void start_wifi() {
 }
 
 void sendData() {
-  while (statusCode != 200) {
+  if (tries < 10 && statusCode != 200) {
     JsonObject sensorData_0 = sensorData.add<JsonObject>();
     sensorData_0["temperature"] = data.temperature;
     sensorData_0["humidity"] = data.humidity;
@@ -82,7 +83,7 @@ void sendData() {
     serializeJson(sensorData, output);
     Serial.println("Making a POST request");
     String postData = output;
-    Serial.print(output);
+    Serial.println(output);
     client.beginRequest();
     String url = "http://";
     url += ADDRESS;
@@ -91,16 +92,18 @@ void sendData() {
     url += "/api/v1/";
     url += ACCESS_TOKEN;
     url += "/telemetry";
-    Serial.print(url);
+    Serial.println(url);
     client.post(url.c_str());
     client.sendHeader("Content-Type", "application/json");
     client.sendHeader("Content-Length", postData.length());
     client.beginBody();
     client.print(postData);
     client.endRequest();
+
     statusCode = client.responseStatusCode();
     String response = client.responseBody();
     Serial.print("Status code: ");
     Serial.println(statusCode);
+    tries++;
   }
 }

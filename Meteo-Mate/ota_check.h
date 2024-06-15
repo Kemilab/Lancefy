@@ -1,16 +1,17 @@
-#include "HardwareSerial.h"
-#include "Print.h"
-#include <Arduino.h>
+#ifndef OTA_CHECK_H
+#define OTA_CHECK_H
+
 #include <WiFi.h>
-#include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <ArduinoHttpClient.h>
 #include "secrets.h"
 
 // Global variables
 const char* serverAddress = ADDRESS;
 const char* token = ACCESS_TOKEN;
 int serverPort = PORT;
+extern HttpClient client;
 
 // Function to send telemetry data to ThingsBoard
 void sendFirmwareState(const char* state, const char* error = nullptr, const char* title = nullptr, const char* version = nullptr) {
@@ -29,7 +30,7 @@ void sendFirmwareState(const char* state, const char* error = nullptr, const cha
   String output;
   serializeJson(doc, output);
 
-  String url = String("http://") + serverAddress + ":" + String(serverPort) + "/api/v1/" + token + "/telemetry";
+  String url = String("https://") + serverAddress + ":" + String(serverPort) + "/api/v1/" + token + "/telemetry";
   client.beginRequest();
   client.post(url.c_str());
   client.sendHeader("Content-Type", "application/json");
@@ -42,7 +43,7 @@ void sendFirmwareState(const char* state, const char* error = nullptr, const cha
 // Function to perform the firmware update
 void updateFirmware(const String& firmwareUrl, const String& firmwareTitle, const String& firmwareVersion) {
   Serial.println("Starting firmware update...");
-  Serial.println("Update url:" + firmwareUrl);
+  Serial.println("Update url: " + firmwareUrl);
 
   client.get(firmwareUrl.c_str());
   int httpResponseCode = client.responseStatusCode();
@@ -55,14 +56,13 @@ void updateFirmware(const String& firmwareUrl, const String& firmwareTitle, cons
 
     if (Update.begin(UPDATE_SIZE_UNKNOWN)) {
       size_t written = Update.writeStream(client);
-      Serial.println("Stream size" + client.contentLength());
+      Serial.println("Stream size: " + String(client.contentLength()));
+      Serial.println("Written: " + String(written) + " successfully");
+
       if (written == client.contentLength()) {
-        Serial.println("Written : " + String(written) + " successfully");
         if (Update.end()) {
-          Serial.println("OTA done!");
           if (Update.isFinished()) {
             sendFirmwareState("VERIFIED");
-
             Serial.println("Update successfully completed. Rebooting.");
             sendFirmwareState("UPDATING");
             ESP.restart();
@@ -100,15 +100,25 @@ void checkFwVersion() {
     Serial.println("Waiting for WiFi connection...");
   }
 
+  // Debug: Print WiFi status
+  Serial.print("Connected to ");
+  Serial.println(WiFi.SSID());
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
   // Get firmware details
   String getUrl = String("http://") + serverAddress + ":" + String(serverPort) + "/api/v1/" + token + "/attributes?sharedKeys=fw_checksum,fw_checksum_algorithm,fw_size,fw_tag,fw_title,fw_version";
-  Serial.println(getUrl);
-  client.get(getUrl);
+  Serial.println("GET URL: " + getUrl);
+
+  client.beginRequest();
+  client.get(getUrl.c_str());
   int httpResponseCode = client.responseStatusCode();
+
+  Serial.println("HTTP Response Code: " + String(httpResponseCode));
 
   if (httpResponseCode > 0) {
     String payload = client.responseBody();
-    Serial.println(payload);
+    Serial.println("Response Payload: " + payload);
 
     StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, payload);
@@ -135,3 +145,5 @@ void checkFwVersion() {
     Serial.println(errorMsg);
   }
 }
+
+#endif // OTA_CHECK_H

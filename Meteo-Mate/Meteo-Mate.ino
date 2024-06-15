@@ -1,8 +1,3 @@
-/*400 Bad Request - Invalid URL, request parameters or body.
-401 Unauthorized - Invalid $ACCESS_TOKEN.
-404 Not Found - Resource not found.
-pin 26 - uv sensor adc
-*/
 /************************************************************************
   LIBRARIES
 ************************************************************************/
@@ -18,12 +13,12 @@ pin 26 - uv sensor adc
 /************************************************************************
   MACROS
 ************************************************************************/
-#define ENABLE_DEBUG true  // serial debuging
+#define ENABLE_DEBUG true  // serial debugging
 //#define BME_POWER_PWR_PIN 12         // digital pin 12
 //#define UV_SENSOR_PWR_PIN 13         // digital pin 13
 #define SEALEVELPRESSURE_HPA (1011)  // sea level pressure for altitude
 #define uS_TO_S_FACTOR 1000000ULL
-#define TIME_TO_SLEEP 5 //900 sec
+#define TIME_TO_SLEEP 900  //900 sec
 #define I2C_ADDRESS_LTR390 0x53
 /**********************************************************************
   VARS
@@ -51,6 +46,7 @@ void setup() {
   start_wifi();
   read_bme();
   delay(1000);
+  read_lux();
   read_UV();
   sendData();
   checkFwVersion();
@@ -58,6 +54,7 @@ void setup() {
   Serial.flush();
   esp_deep_sleep_start();
 }
+
 void loop() {}
 
 int read_bme() {
@@ -72,13 +69,11 @@ int read_bme() {
 
   bme.read(pres, temp, hum, tempUnit, presUnit);
 
-
   EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
   EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
 
   float absHum = EnvironmentCalculations::AbsoluteHumidity(temp, hum, envTempUnit);
   float dewPoint = EnvironmentCalculations::DewPoint(temp, hum, envTempUnit);
-  //float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, temp, pres, envAltUnit, envTempUnit);
   float heatIndex = EnvironmentCalculations::HeatIndex(temp, hum, envTempUnit);
 
   data.temperature = temp;
@@ -91,64 +86,44 @@ int read_bme() {
   Serial.print(F("Temp: "));
   Serial.print(temp);
   Serial.print(("°" + String(tempUnit == BME280::TempUnit_Celsius ? "C" : "F")));
-  Serial.println("\t\tHumidity: ");
+  Serial.print("\t\tHumidity: ");
   Serial.print(hum);
   Serial.print("% RH");
   Serial.print("\t\tPressure: ");
   Serial.print(pres);
-  Serial.print(String(presUnit == BME280::PresUnit_hPa ? "hPa" : "Pa"));
-  /*Serial.println("\t\tAltitude: ");
-  Serial.println(altitude);*/
-  //Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
-  Serial.println("\t\tDew point: ");
+  Serial.println(String(presUnit == BME280::PresUnit_hPa ? "hPa" : "Pa"));
+  Serial.print("\t\tDew point: ");
   Serial.print(dewPoint);
-  Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
-  /*Serial.println("\t\tEquivalent Sea Level Pressure: ");
-  Serial.println(seaLevel);*/
+  Serial.println("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
   Serial.print("\t\tHeat Index: ");
-  Serial.println(heatIndex);
-  Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
-  Serial.println("\t\tAbsolute Humidity: ");
-  Serial.print(absHum);
+  Serial.print(heatIndex);
+  Serial.println("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+  Serial.print("\t\tAbsolute Humidity: ");
+  Serial.println(absHum);
+}
+
+void read_lux() {
+  ltr390.setMode(LTR390_MODE_ALS);
+  ltr390.setGain(LTR390_GAIN_6); // Adjust gain if necessary
+  ltr390.setResolution(LTR390_RESOLUTION_18BIT); // Adjust resolution if necessary
+
+  Serial.print("Ambient Light Lux: ");
+  float lux = ltr390.getLux();
+  Serial.println(lux);
+  data.luxLevel = lux;
 }
 
 void read_UV() {
-
-  ltr390.setMode(LTR390_MODE_ALS);
-  ltr390.setGain(LTR390_GAIN_3);
-  Serial.print("Gain : ");
-  switch (ltr390.getGain()) {
-    case LTR390_GAIN_1: Serial.println(1); break;
-    case LTR390_GAIN_3: Serial.println(3); break;
-    case LTR390_GAIN_6: Serial.println(6); break;
-    case LTR390_GAIN_9: Serial.println(9); break;
-    case LTR390_GAIN_18: Serial.println(18); break;
-  }
-
-  ltr390.setResolution(LTR390_RESOLUTION_18BIT);
-  Serial.print("Resolution : ");
-  switch (ltr390.getResolution()) {
-    case LTR390_RESOLUTION_13BIT: Serial.println(13); break;
-    case LTR390_RESOLUTION_16BIT: Serial.println(16); break;
-    case LTR390_RESOLUTION_17BIT: Serial.println(17); break;
-    case LTR390_RESOLUTION_18BIT: Serial.println(18); break;
-    case LTR390_RESOLUTION_19BIT: Serial.println(19); break;
-    case LTR390_RESOLUTION_20BIT: Serial.println(20); break;
-  }
-
-  Serial.print("Ambient Light Lux: ");
-  Serial.println(ltr390.getLux());
-  ltr390.setGain(LTR390_GAIN_18);                 //Recommended for UVI - x18
-  ltr390.setResolution(LTR390_RESOLUTION_20BIT);  //Recommended for UVI - 20-bit
   ltr390.setMode(LTR390_MODE_UVS);
-  data.uvIndex = ltr390.getUVI();
-  data.luxLevel = ltr390.getLux();
-}
+  ltr390.setGain(LTR390_GAIN_18);  // Recommended for UVI - x18
+  ltr390.setResolution(LTR390_RESOLUTION_18BIT);  // Recommended for UVI - 20-bit
 
-float calculateDewPoin() {
+  Serial.print("UV Index: ");
+  float uvIndex = ltr390.getUVI();
+  Serial.println(uvIndex);
+  data.uvIndex = uvIndex;
 }
-
 
 void wind_speed() {
-  //todo
+  // todo
 }
