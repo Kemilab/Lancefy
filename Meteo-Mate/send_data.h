@@ -107,5 +107,7 @@ void sendData() {
     Serial.print("Status code: ");
     Serial.println(statusCode);
     tries++;
+  }else{
+    ESP.restart();
   }
 }
