@@ -40,6 +40,7 @@ struct SensorData {
   int absHum;
   int uvIndex;
   int luxLevel;
+  float wind_speed;
   unsigned long localTime;
 };
 
@@ -75,6 +76,7 @@ void sendData() {
     sensorData_0["absHum"] = data.absHum;
     sensorData_0["uvIndex"] = data.uvIndex;
     sensorData_0["luxLevel"] = data.luxLevel;
+    sensorData_0["wind"] = data.wind_speed;
     sensorData_0["firmware_version"] = firmwareVersion;
     sensorData_0["stationName"] = stationName;
     sensorData_0["stationLocation"] = stationLocation;

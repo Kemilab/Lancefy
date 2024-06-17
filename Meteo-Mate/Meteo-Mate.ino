@@ -48,8 +48,9 @@ void setup() {
   delay(1000);
   read_lux();
   read_UV();
+  wind_speed();
   sendData();
-  checkFwVersion();
+  // checkFwVersion(); update!!
   Serial.println("Going to sleep now");
   Serial.flush();
   esp_deep_sleep_start();
@@ -104,8 +105,8 @@ int read_bme() {
 
 void read_lux() {
   ltr390.setMode(LTR390_MODE_ALS);
-  ltr390.setGain(LTR390_GAIN_6); // Adjust gain if necessary
-  ltr390.setResolution(LTR390_RESOLUTION_18BIT); // Adjust resolution if necessary
+  ltr390.setGain(LTR390_GAIN_6);                  // Adjust gain if necessary
+  ltr390.setResolution(LTR390_RESOLUTION_18BIT);  // Adjust resolution if necessary
 
   Serial.print("Ambient Light Lux: ");
   float lux = ltr390.getLux();
@@ -115,7 +116,7 @@ void read_lux() {
 
 void read_UV() {
   ltr390.setMode(LTR390_MODE_UVS);
-  ltr390.setGain(LTR390_GAIN_18);  // Recommended for UVI - x18
+  ltr390.setGain(LTR390_GAIN_18);                 // Recommended for UVI - x18
   ltr390.setResolution(LTR390_RESOLUTION_18BIT);  // Recommended for UVI - 20-bit
 
   Serial.print("UV Index: ");
@@ -125,5 +126,36 @@ void read_UV() {
 }
 
 void wind_speed() {
-  // todo
+  const int analogPin = 25;             // Analog pin connected to the anemometer sensor
+  const int threshold = 512;            // Threshold value for detecting rotations 
+  const unsigned long interval = 1000;  // 1-second interval for frequency calculation
+
+  volatile int pulseCount = 0;  // Count of threshold crossings
+  unsigned long lastTime = 0;
+
+  float k = 0.1;                // Calibration constant
+  bool aboveThreshold = false;  // Track if the last value was above the threshold
+
+    unsigned long currentTime = millis();
+    int sensorValue = analogRead(analogPin);
+    if (sensorValue > threshold && !aboveThreshold) {
+      pulseCount++;
+      aboveThreshold = true;
+    } else if (sensorValue <= threshold) {
+      aboveThreshold = false;
+    }
+
+    if (currentTime - lastTime >= interval) {
+      float frequency = pulseCount / (interval / 1000.0);  // Calculate frequency in Hz
+      Serial.println(frequency);
+      float windSpeed = (k * frequency) * 3.6 ;  // Calculate wind speed in m/s
+
+      Serial.print("Wind Speed: ");
+      Serial.print(windSpeed);
+      Serial.println(" km/h");
+      data.wind_speed = windSpeed;
+
+      pulseCount = 0;  // Reset pulse count
+      lastTime = currentTime;
+    }
 }
