@@ -29,4 +29,3 @@ To get started with Lancefy, follow these steps:
    ```bash
    git clone https://github.com/Kemilab/Lancefy.git
 
-This `README.md` file provides an overview of the project, instructions for getting started, and information on how to contribute. 
